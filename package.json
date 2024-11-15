@@ -1,0 +1,22 @@
+{
+  "name": "node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "chrome-launcher": "^1.1.2",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "lighthouse": "^12.2.2",
+    "nodemon": "^3.1.7",
+    "puppeteer": "^23.8.0"
+  }
+}
