@@ -1,9 +1,9 @@
 import express from 'express';
-import puppeteer from 'puppeteer';
 import cors from 'cors';
 import lighthouse from 'lighthouse';
 import fs from 'fs';
 import { launch } from 'chrome-launcher';
+import puppeteer from 'puppeteer';
 
 const app = express();
 const PORT = 3000;
