@@ -1,5 +1,5 @@
 import express from 'express';
-import { launch } from 'chrome-launcher';
+import puppeteer from 'puppeteer';
 import cors from 'cors';
 import lighthouse from 'lighthouse';
 import fs from 'fs';
@@ -23,8 +23,14 @@ app.get('/lighthouse', async (req, res) => {
 
   try {
     // Launch Chrome to run Lighthouse
-    const chrome = await launch({ chromeFlags: ['--headless'] });
-    const options = { logLevel: 'info', output: 'html', port: chrome.port };
+    const browser = await puppeteer.launch({ headless: true });
+    const browserWSEndpoint = browser.wsEndpoint();
+
+    const options = {
+      logLevel: 'info',
+      output: 'html',
+      port: new URL(browserWSEndpoint).port,
+    };
     const runnerResult = await lighthouse(url, options);
 
     // Get the report HTML
@@ -36,7 +42,7 @@ app.get('/lighthouse', async (req, res) => {
     // Send the HTML response
     res.send(reportHtml);
 
-    await chrome.kill();
+    await browser.close();
   } catch (error) {
     res
       .status(500)
