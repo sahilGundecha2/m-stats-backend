@@ -3,6 +3,7 @@ import puppeteer from 'puppeteer';
 import cors from 'cors';
 import lighthouse from 'lighthouse';
 import fs from 'fs';
+import { launch } from 'chrome-launcher';
 
 const app = express();
 const PORT = 3000;
@@ -23,14 +24,15 @@ app.get('/lighthouse', async (req, res) => {
 
   try {
     // Launch Chrome to run Lighthouse
-    const browser = await puppeteer.launch({ headless: true });
-    const browserWSEndpoint = browser.wsEndpoint();
+    const chromePath = puppeteer.executablePath();
 
-    const options = {
-      logLevel: 'info',
-      output: 'html',
-      port: new URL(browserWSEndpoint).port,
-    };
+    // Launch Chrome to run Lighthouse
+    const chrome = await launch({
+      chromeFlags: ['--headless', '--no-sandbox', '--disable-gpu'],
+      chromePath: chromePath, // Provide the path to the executable
+    });
+
+    const options = { logLevel: 'info', output: 'html', port: chrome.port };
     const runnerResult = await lighthouse(url, options);
 
     // Get the report HTML
@@ -42,7 +44,7 @@ app.get('/lighthouse', async (req, res) => {
     // Send the HTML response
     res.send(reportHtml);
 
-    await browser.close();
+    await chrome.kill();
   } catch (error) {
     res
       .status(500)
