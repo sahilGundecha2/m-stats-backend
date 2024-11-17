@@ -5,6 +5,7 @@ import { launch } from 'chrome-launcher';
 import cors from 'cors';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import puppeteer from 'puppeteer';
 
 const app = express();
 const PORT = 3000;
@@ -28,11 +29,14 @@ app.get('/lighthouse', async (req, res) => {
   }
 
   try {
-    const chrome = await launch({ chromeFlags: ['--headless'] });
+    const browser = await puppeteer.launch({ headless: true });
+    const browserWSEndpoint = browser.wsEndpoint();
+
+    // const chrome = await launch({ chromeFlags: ['--headless'] });
     const options = {
       logLevel: 'info',
       output: 'html',
-      port: chrome.port,
+      port: new URL(browserWSEndpoint).port,
     };
 
     const runnerResult = await lighthouse(url, options);
@@ -45,7 +49,8 @@ app.get('/lighthouse', async (req, res) => {
     fs.mkdirSync(path.join(__dirname), { recursive: true });
     fs.writeFileSync(filePath, reportHtml);
 
-    await chrome.kill();
+    // await chrome.kill();
+    await browser.close();
 
     // Serve the generated HTML file
     res.sendFile(filePath);
