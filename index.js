@@ -29,7 +29,22 @@ app.get('/lighthouse', async (req, res) => {
   }
 
   try {
-    const browser = await puppeteer.launch({ headless: true });
+    const executablePath = puppeteer.executablePath();
+    console.log('Using Chrome at path:', executablePath);
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        // '--single-process', // Required for Docker environments
+        '--disable-gpu',
+      ],
+    });
+
     const browserWSEndpoint = browser.wsEndpoint();
 
     // const chrome = await launch({ chromeFlags: ['--headless'] });

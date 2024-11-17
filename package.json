@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "nodemon index.js",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "postinstall": "npx puppeteer install"
   },
   "keywords": [],
   "author": "",
