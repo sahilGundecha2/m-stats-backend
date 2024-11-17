@@ -3,77 +3,126 @@ import path from 'path';
 import lighthouse from 'lighthouse';
 import { launch } from 'chrome-launcher';
 import cors from 'cors';
+import { exec } from 'child_process';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 import puppeteer from 'puppeteer';
 
 const app = express();
 const PORT = 3000;
-
-app.use(express.static('public')); // Serve static files (e.g., Lighthouse reports)
 app.use(cors());
-app.use(express.json());
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// app.use(express.json());
+app.use(
+  '/lighthouse-reports',
+  express.static(path.join(__dirname, 'lighthouse-reports'))
+);
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
 
-app.get('/lighthouse', async (req, res) => {
-  const { url } = req.query;
+// Function to generate Lighthouse report
+async function generateLighthouseReport(url) {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
 
-  if (!url) {
-    return res.status(400).send('URL parameter is required');
+  const { lhr, report } = await lighthouse(url, {
+    port: new URL(browser.wsEndpoint()).port,
+    output: 'html',
+    onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
+  });
+
+  await browser.close();
+
+  // Save report to file
+  const reportPath = path.join(
+    __dirname,
+    'reports',
+    encodeURIComponent(url) + '.html'
+  );
+  try {
+    fs.writeFileSync(reportPath, report, 'utf-8');
+    console.log('Report successfully saved:', reportPath);
+  } catch (error) {
+    console.error('Error saving report:', error);
+    throw error;
   }
 
+  return reportPath;
+}
+
+// Endpoint to handle Lighthouse report generation
+app.get('/lighthouse', async (req, res) => {
+  const { url: targetUrl } = req.query;
   try {
-    const executablePath = puppeteer.executablePath();
-    console.log('Using Chrome at path:', executablePath);
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        // '--single-process', // Required for Docker environments
-        '--disable-gpu',
-      ],
-    });
-
-    const browserWSEndpoint = browser.wsEndpoint();
-
-    // const chrome = await launch({ chromeFlags: ['--headless'] });
-    const options = {
-      logLevel: 'info',
-      output: 'html',
-      port: new URL(browserWSEndpoint).port,
-    };
-
-    const runnerResult = await lighthouse(url, options);
-
-    // Save the report to an HTML file
-    const reportHtml = runnerResult.report;
-    const filePath = path.join(__dirname, `lighthouse.html`);
-
-    // Ensure 'reports' directory exists
-    fs.mkdirSync(path.join(__dirname), { recursive: true });
-    fs.writeFileSync(filePath, reportHtml);
-
-    // await chrome.kill();
-    await browser.close();
-
-    // Serve the generated HTML file
-    res.sendFile(filePath);
+    const reportPath = await generateLighthouseReport(targetUrl);
+    res.sendFile(reportPath);
   } catch (error) {
-    console.error('Error running Lighthouse audit:', error);
-    res.status(500).send('Error running Lighthouse audit');
+    console.error('Error generating Lighthouse report:', error);
+    res.status(500).send('Error generating Lighthouse report');
   }
 });
+
+// Serve reports statically
+app.use('/reports', express.static(path.join(__dirname, 'reports')));
+
+// app.get('/lighthouse', async (req, res) => {
+//   const { url } = req.query;
+
+//   if (!url) {
+//     return res.status(400).send('URL parameter is required');
+//   }
+
+//   try {
+//     const executablePath = puppeteer.executablePath();
+//     console.log('Using Chrome at path:', executablePath);
+//     const browser = await puppeteer.launch({
+//       headless: true,
+//       args: [
+//         '--no-sandbox',
+//         '--disable-setuid-sandbox',
+//         '--disable-dev-shm-usage',
+//         '--disable-accelerated-2d-canvas',
+//         '--no-first-run',
+//         '--no-zygote',
+//         // '--single-process', // Required for Docker environments
+//         '--disable-gpu',
+//       ],
+//     });
+
+//     const browserWSEndpoint = browser.wsEndpoint();
+
+//     // const chrome = await launch({ chromeFlags: ['--headless'] });
+//     const options = {
+//       logLevel: 'info',
+//       output: 'html',
+//       port: new URL(browserWSEndpoint).port,
+//     };
+
+//     const runnerResult = await lighthouse(url, options);
+
+//     // Save the report to an HTML file
+//     const reportHtml = runnerResult.report;
+//     const filePath = path.join(__dirname, `lighthouse.html`);
+
+//     // Ensure 'reports' directory exists
+//     fs.mkdirSync(path.join(__dirname), { recursive: true });
+//     fs.writeFileSync(filePath, reportHtml);
+
+//     // await chrome.kill();
+//     await browser.close();
+
+//     // Serve the generated HTML file
+//     res.sendFile(filePath);
+//   } catch (error) {
+//     console.error('Error running Lighthouse audit:', error);
+//     res.status(500).send('Error running Lighthouse audit');
+//   }
+// });
 //   const { url } = req.query; // Pass the target URL as a query parameter
 
 //   if (!url) {
