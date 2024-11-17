@@ -5,7 +5,6 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "prestart": "npx puppeteer install",
     "start": "nodemon index.js"
   },
   "keywords": [],
